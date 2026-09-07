@@ -1,0 +1,31 @@
+{
+  "name": "opencode-request-recorder",
+  "version": "0.1.0",
+  "description": "Opt-in, local request-body recording for OpenCode V2",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dukebw/opencode-request-recorder.git"
+  },
+  "exports": "./index.js",
+  "files": [
+    "index.js",
+    "recorder.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "test": "node --test",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm test"
+  },
+  "devDependencies": {
+    "@opencode-ai/plugin": "0.0.0-beta-19151",
+    "@types/node": "24.13.3",
+    "typescript": "7.0.2"
+  }
+}
