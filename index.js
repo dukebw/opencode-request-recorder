@@ -28,13 +28,17 @@ function positiveInteger(value, fallback, name) {
   return value;
 }
 
+// The whole 0.0.0-beta-* line shares the tested hook contract; other releases must be
+// tested before recording against them.
+const testedVersionPrefix = "0.0.0-beta-";
+
 /** @type {import("@opencode-ai/plugin/promise/plugin").Plugin} */
 const plugin = {
   id: "opencode-request-recorder",
   async setup(ctx) {
-    if (ctx.app.version !== "0.0.0-beta-19151") {
+    if (!ctx.app.version.startsWith(testedVersionPrefix)) {
       throw new Error(
-        "Request Recorder is tested with OpenCode V2 0.0.0-beta-19151; use a tested runtime/plugin pair",
+        `Request Recorder is tested with OpenCode V2 ${testedVersionPrefix}*; use a tested runtime/plugin pair`,
       );
     }
     const directory =

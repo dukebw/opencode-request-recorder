@@ -288,3 +288,24 @@ test("V2 setup registers control RPC and native hook without modifying history",
   await cleanup();
   assert.deepEqual(disposed, ["hook", "rpc"]);
 });
+
+test("setup accepts V2 beta runtimes and rejects other versions", async () => {
+  const context = (version) => ({
+    app: { version },
+    options: {},
+    location: { directory: "/project" },
+    rpc: { register: async () => ({ dispose: async () => {} }) },
+    session: { hook: async () => ({ dispose: async () => {} }) },
+  });
+  for (const version of [
+    "0.0.0-beta-19151",
+    "0.0.0-beta-20260911-throughput.1",
+  ]) {
+    const cleanup = await plugin.setup(context(version));
+    await cleanup();
+  }
+  await assert.rejects(
+    plugin.setup(context("1.0.0")),
+    /tested with OpenCode V2/,
+  );
+});

@@ -4,8 +4,8 @@ Opt-in, local recording of OpenCode V2's outgoing JSON request bodies. Uses the
 native `http.request` hook, not a proxy or transcript reconstruction. No runtime
 dependencies, model calls, or uploads.
 
-**Requires OpenCode V2 `0.0.0-beta-19151`.** The plugin refuses other versions until
-their hook contract has been tested. OpenCode V1 is not supported.
+**Requires an OpenCode V2 `0.0.0-beta-*` runtime.** The plugin refuses other versions
+until their hook contract has been tested. OpenCode V1 is not supported.
 
 ## Install
 
