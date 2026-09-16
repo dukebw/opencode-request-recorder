@@ -4,8 +4,9 @@ Opt-in, local recording of OpenCode V2's outgoing JSON request bodies. Uses the
 native `http.request` hook, not a proxy or transcript reconstruction. No runtime
 dependencies, model calls, or uploads.
 
-**Requires an OpenCode V2 `0.0.0-beta-*` runtime.** The plugin refuses other versions
-until their hook contract has been tested. OpenCode V1 is not supported.
+**Supports OpenCode V2 `2.0.4` and `0.0.0-beta-*` runtimes.** Local
+`2.0.4-throughput-<12-hex-digest>` builds are also supported. The plugin refuses
+other versions until their hook contract has been tested. OpenCode V1 is not supported.
 
 ## Install
 
@@ -102,7 +103,7 @@ Use an absolute directory and positive integer limits. Options do not enable cap
 ```sh
 npm ci --ignore-scripts
 npm run check
-OPENCODE_BIN=/absolute/path/to/opencode2 npm test
+OPENCODE_BIN=/absolute/path/to/opencode npm test
 ```
 
 The optional OpenCode integration test uses a temporary home/config, an isolated

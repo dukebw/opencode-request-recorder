@@ -252,7 +252,7 @@ test("V2 setup registers control RPC and native hook without modifying history",
   let handlers, callback;
   const disposed = [];
   const context = {
-    app: { version: "0.0.0-beta-19151" },
+    app: { version: "2.0.4" },
     options: { directory },
     location: { directory: "/project" },
     rpc: {
@@ -289,7 +289,7 @@ test("V2 setup registers control RPC and native hook without modifying history",
   assert.deepEqual(disposed, ["hook", "rpc"]);
 });
 
-test("setup accepts V2 beta runtimes and rejects other versions", async () => {
+test("setup accepts tested V2 releases and throughput builds; rejects untested versions", async () => {
   const context = (version) => ({
     app: { version },
     options: {},
@@ -300,12 +300,23 @@ test("setup accepts V2 beta runtimes and rejects other versions", async () => {
   for (const version of [
     "0.0.0-beta-19151",
     "0.0.0-beta-20260911-throughput.1",
+    "2.0.4",
+    "2.0.4-throughput-8ff7204f52aa",
   ]) {
     const cleanup = await plugin.setup(context(version));
     await cleanup();
   }
-  await assert.rejects(
-    plugin.setup(context("1.0.0")),
-    /tested with OpenCode V2/,
-  );
+  for (const version of [
+    "1.0.0",
+    "2.0.3",
+    "2.0.5",
+    "2.0.40",
+    "2.0.4-rc.1",
+    "2.0.4-throughput-invalid",
+  ]) {
+    await assert.rejects(
+      plugin.setup(context(version)),
+      /tested with OpenCode V2/,
+    );
+  }
 });

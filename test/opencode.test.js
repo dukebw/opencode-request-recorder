@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { once } from "node:events";
 import { createServer } from "node:http";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -15,6 +15,14 @@ test(
     timeout: 60_000,
   },
   async (t) => {
+    const version = execFileSync(process.env.OPENCODE_BIN, ["--version"], {
+      encoding: "utf8",
+    })
+      .trim()
+      .split(/\s+/)
+      .at(-1)
+      .replace(/^v/, "");
+    const legacy = version.startsWith("0.0.0-beta-");
     const root = await mkdtemp(join(tmpdir(), "recorder-opencode-"));
     let child;
     let provider;
@@ -79,7 +87,7 @@ test(
         model: "recorder-fixture/fixture",
         providers: {
           "recorder-fixture": {
-            package: "@opencode-ai/ai/providers/openai-compatible",
+            package: `${legacy ? "@opencode-ai" : "@opencode"}/ai/providers/openai-compatible`,
             env: ["RECORDER_FIXTURE_API_KEY"],
             settings: {
               baseURL: `http://127.0.0.1:${provider.address().port}/v1`,
@@ -168,7 +176,7 @@ test(
       if (child.exitCode !== null)
         throw new Error(`Isolated OpenCode exited: ${safeLogs()}`);
       try {
-        const health = await fetch(base + "/api/health", {
+        const health = await fetch(base + (legacy ? "/api/health" : "/api/status"), {
           headers: auth(),
           signal: AbortSignal.timeout(500),
         });
@@ -186,7 +194,20 @@ test(
       true,
       `Isolated OpenCode did not become ready: ${safeLogs()}`,
     );
-    await api(`/api/plugin/await-activation?${location}`, {});
+    if (legacy) await api(`/api/plugin/await-activation?${location}`, {});
+    const { data: session } = await api("/api/session", {
+      location: { directory },
+      title: "Synthetic recorder test",
+      model: { providerID: "recorder-fixture", id: "fixture" },
+    });
+    const control = (method) =>
+      api(`/api/rpc/request-recorder/${method}?${location}`, {
+        input: { sessionID: session.id },
+      });
+    const wait = () =>
+      api(`/api/${legacy ? "" : "experimental/"}session/${session.id}/wait`, {});
+    // RPC dispatch waits for plugin activation on stable V2.
+    assert.equal((await control("status")).output.recording, false);
     const plugins = await api(`/api/plugin?${location}`);
     if (!JSON.stringify(plugins).includes("opencode-request-recorder")) {
       throw new Error(
@@ -197,20 +218,11 @@ test(
         }),
       );
     }
-    const { data: session } = await api("/api/session", {
-      location: { directory },
-      title: "Synthetic recorder test",
-      model: { providerID: "recorder-fixture", id: "fixture" },
-    });
-    const control = (method) =>
-      api(`/api/rpc/request-recorder/${method}?${location}`, {
-        input: { sessionID: session.id },
-      });
     await control("start");
     await api(`/api/session/${session.id}/prompt`, {
       text: "Reply with fixture response. Do not use tools.",
     });
-    await api(`/api/session/${session.id}/wait`, {});
+    await wait();
     const stopped = await control("stop");
     const status = stopped.output;
     assert.equal(status.recording, false);
@@ -230,6 +242,7 @@ test(
       "Capture differs from actual wire body",
     );
     assert.equal(record.kind, "primary");
+    assert.equal(record.opencodeVersion, version);
     const payload = JSON.parse(record.body);
     assert.ok(payload.messages.some((m) => m.role === "system"));
     assert.ok(payload.tools.length > 0);
@@ -238,7 +251,7 @@ test(
     await api(`/api/session/${session.id}/prompt`, {
       text: "Reply again without tools.",
     });
-    await api(`/api/session/${session.id}/wait`, {});
+    await wait();
     assert.ok(received.length > count);
     assert.equal(await readFile(status.file, "utf8"), captureText);
   },

@@ -3,7 +3,7 @@ import { constants } from "node:fs";
 import { appendFile, lstat, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-/** @typedef {import("@opencode-ai/plugin/promise/session").SessionHttpRequest} RequestEvent */
+/** @typedef {import("@opencode/plugin/promise/session").SessionHttpRequest} RequestEvent */
 /** @typedef {{ active: boolean, file: string, requests: number, bytes: number, expiresAt: number, reason: string | null, pending: Promise<void> }} Recording */
 
 export class Recorder {
