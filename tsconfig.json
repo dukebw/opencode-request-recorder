@@ -9,5 +9,5 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["index.js", "recorder.js"]
+  "include": ["index.js", "recorder.js", "verified-runtimes.js"]
 }

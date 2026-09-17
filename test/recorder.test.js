@@ -19,6 +19,15 @@ import { join } from "node:path";
 import { test } from "node:test";
 import plugin from "../index.js";
 import { Recorder } from "../recorder.js";
+import { markRuntimeVerified } from "../verified-runtimes.js";
+
+/** Point the plugin at a throwaway stamp file for the duration of a test. */
+function useStampFile(t, root) {
+  process.env.RECORDER_VERIFIED_PATH = join(root, "verified-runtimes.json");
+  t.after(() => {
+    delete process.env.RECORDER_VERIFIED_PATH;
+  });
+}
 
 async function fixture(t, options = {}) {
   const root = await mkdtemp(join(tmpdir(), "request-recorder-"));
@@ -248,7 +257,9 @@ test("refuses shared capture directory and symlink replacement", async (t) => {
 });
 
 test("V2 setup registers control RPC and native hook without modifying history", async (t) => {
-  const { directory } = await fixture(t);
+  const { directory, root } = await fixture(t);
+  useStampFile(t, root);
+  await markRuntimeVerified("2.0.4");
   let handlers, callback;
   const disposed = [];
   const context = {
@@ -289,7 +300,10 @@ test("V2 setup registers control RPC and native hook without modifying history",
   assert.deepEqual(disposed, ["hook", "rpc"]);
 });
 
-test("setup accepts tested V2 releases and throughput builds; rejects untested versions", async () => {
+test("setup records only on runtimes stamped by the integration test", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "request-recorder-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  useStampFile(t, root);
   const context = (version) => ({
     app: { version },
     options: {},
@@ -297,26 +311,12 @@ test("setup accepts tested V2 releases and throughput builds; rejects untested v
     rpc: { register: async () => ({ dispose: async () => {} }) },
     session: { hook: async () => ({ dispose: async () => {} }) },
   });
-  for (const version of [
-    "0.0.0-beta-19151",
-    "0.0.0-beta-20260911-throughput.1",
-    "2.0.4",
-    "2.0.4-throughput-8ff7204f52aa",
-  ]) {
-    const cleanup = await plugin.setup(context(version));
-    await cleanup();
-  }
-  for (const version of [
-    "1.0.0",
-    "2.0.3",
-    "2.0.5",
-    "2.0.40",
-    "2.0.4-rc.1",
-    "2.0.4-throughput-invalid",
-  ]) {
-    await assert.rejects(
-      plugin.setup(context(version)),
-      /tested with OpenCode V2/,
-    );
-  }
+  await assert.rejects(plugin.setup(context("2.0.5")), /has not passed/);
+  await assert.rejects(plugin.setup(context("1.0.0")), /has not passed/);
+  await markRuntimeVerified("2.0.5");
+  const cleanup = await plugin.setup(context("2.0.5"));
+  await cleanup();
+  // A corrupt stamp file fails loudly instead of silently denying.
+  await writeFile(process.env.RECORDER_VERIFIED_PATH, "{ not json");
+  await assert.rejects(plugin.setup(context("2.0.5")), /verified-runtimes/);
 });

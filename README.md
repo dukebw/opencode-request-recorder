@@ -4,9 +4,11 @@ Opt-in, local recording of OpenCode V2's outgoing JSON request bodies. Uses the
 native `http.request` hook, not a proxy or transcript reconstruction. No runtime
 dependencies, model calls, or uploads.
 
-**Supports OpenCode V2 `2.0.4` and `0.0.0-beta-*` runtimes.** Local
-`2.0.4-throughput-<12-hex-digest>` builds are also supported. The plugin refuses
-other versions until their hook contract has been tested. OpenCode V1 is not supported.
+**Records only on runtimes that have passed its own integration test on this
+machine.** A passing test run stamps the exact runtime version in
+`~/.local/share/opencode/request-recorder/verified-runtimes.json`, and the plugin
+refuses to load on any unstamped runtime. Run the test after every OpenCode
+upgrade, or wire it into your update script. OpenCode V1 is not supported.
 
 ## Install
 
@@ -67,7 +69,8 @@ are plaintext, not encrypted. On a remote OpenCode server, they live on that ser
 The recorder observes the native request at its hook position. Configure it after
 other request-modifying plugins; a later hook can otherwise change what is sent.
 An integration test compares captured body bytes with what a loopback provider
-actually receives from the supported OpenCode build.
+actually receives from the runtime under test; a passing run is what stamps a
+runtime as verified.
 
 Captures are **outgoing attempts**, not proof of successful generation. Retries
 remain separate records. This plugin does not deduplicate, benchmark, or execute
@@ -106,11 +109,18 @@ npm run check
 OPENCODE_BIN=/absolute/path/to/opencode npm test
 ```
 
+`OPENCODE_BIN` must be the real OpenCode binary, not a wrapper script that
+resolves the binary through your home directory — the test isolates `HOME`.
+
 The optional OpenCode integration test uses a temporary home/config, an isolated
 server, a loopback mock provider, and synthetic data. It does not touch your
-sessions or provider credentials. SDK dependencies are development-only; the
-plugin itself imports only Node built-ins and its own recorder module.
+sessions or provider credentials. On success it stamps the tested runtime version
+in the verified-runtimes file, which is what allows the plugin to load on that
+runtime. SDK dependencies are development-only; the plugin itself imports only
+Node built-ins and its own modules.
 
 For local plugin development, configure the absolute **repository directory**, not
 `index.js`, as the plugin package path. Set `RECORDER_PACKAGE_PATH` when testing an
-unpacked package instead of the working tree.
+unpacked package instead of the working tree. `RECORDER_VERIFIED_PATH` overrides
+the verified-runtimes file location; the test harness uses it to admit the
+runtime under test into its isolated server.

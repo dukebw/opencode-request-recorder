@@ -7,6 +7,10 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { test } from "node:test";
+import {
+  markRuntimeVerified,
+  verifiedRuntimesPath,
+} from "../verified-runtimes.js";
 
 test(
   "real OpenCode V2 records exactly what the loopback provider receives",
@@ -44,6 +48,15 @@ test(
     const home = join(root, "home");
     const directory = join(root, "project");
     const captures = join(root, "captures");
+    // The plugin refuses unstamped runtimes, so the isolated server gets a
+    // throwaway stamp; the real stamp is written only after this test passes.
+    const harnessStamp = join(root, "verified-runtimes.json");
+    process.env.RECORDER_VERIFIED_PATH = harnessStamp;
+    try {
+      await markRuntimeVerified(version);
+    } finally {
+      delete process.env.RECORDER_VERIFIED_PATH;
+    }
     const configDirectory = join(home, ".config/opencode");
     await mkdir(home);
     await mkdir(directory);
@@ -127,6 +140,7 @@ test(
           XDG_CACHE_HOME: join(home, ".cache"),
           TMPDIR: root,
           OPENCODE_DISABLE_AUTOUPDATE: "1",
+          RECORDER_VERIFIED_PATH: harnessStamp,
           RECORDER_FIXTURE_API_KEY: "fixture-not-a-real-key",
         },
         stdio: ["ignore", "pipe", "pipe"],
@@ -254,5 +268,7 @@ test(
     await wait();
     assert.ok(received.length > count);
     assert.equal(await readFile(status.file, "utf8"), captureText);
+    await markRuntimeVerified(version);
+    t.diagnostic(`Stamped OpenCode ${version} in ${verifiedRuntimesPath()}`);
   },
 );

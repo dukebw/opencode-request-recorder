@@ -1,6 +1,7 @@
 import { homedir } from "node:os";
 import { isAbsolute, join } from "node:path";
 import { Recorder } from "./recorder.js";
+import { isRuntimeVerified } from "./verified-runtimes.js";
 
 const input = {
   type: "object",
@@ -28,16 +29,16 @@ function positiveInteger(value, fallback, name) {
   return value;
 }
 
-// Other releases must pass the native-hook integration test before recording.
-const testedVersion = /^(?:0\.0\.0-beta-.+|2\.0\.4(?:-throughput-[0-9a-f]{12})?)$/;
-
+// Only runtimes that have passed the native-hook integration test on this
+// machine may record; a passing test run stamps the exact runtime version.
 /** @type {import("@opencode/plugin/promise/plugin").Plugin} */
 const plugin = {
   id: "opencode-request-recorder",
   async setup(ctx) {
-    if (!testedVersion.test(ctx.app.version)) {
+    if (!(await isRuntimeVerified(ctx.app.version))) {
       throw new Error(
-        "Request Recorder is tested with OpenCode V2 0.0.0-beta-* and 2.0.4 (including throughput builds); use a tested runtime/plugin pair",
+        `OpenCode ${ctx.app.version} has not passed the request-recorder integration test on this machine; refusing to load. ` +
+          "Run `OPENCODE_BIN=<path to the OpenCode binary> npm test` in the opencode-request-recorder checkout to verify this runtime.",
       );
     }
     const directory =
